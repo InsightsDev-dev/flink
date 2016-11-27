@@ -1,62 +1,63 @@
-# s3 deployment based on http://about.travis-ci.org/blog/2012-12-18-travis-artifacts/
-
-# send to container based infrastructure: http://docs.travis-ci.com/user/workers/container-based-infrastructure/
-sudo: false
-
-#cache:
-#  directories:
-#  - $HOME/.m2
-
-install: true
-
-language: java
-
-#See https://issues.apache.org/jira/browse/FLINK-1072
-matrix:
-  include:
-  # Always run test groups A and B together
-    - jdk: "oraclejdk8"
-      env: PROFILE="-Dhadoop.version=2.7.2 -Dscala-2.11 -Pinclude-yarn-tests,flink-fast-tests-a,include-kinesis -Dmaven.javadoc.skip=true"
-    - jdk: "oraclejdk8"
-      env: PROFILE="-Dhadoop.version=2.7.2 -Dscala-2.11 -Pinclude-yarn-tests,flink-fast-tests-b,include-kinesis -Dmaven.javadoc.skip=true"
-
-    - jdk: "oraclejdk8"
-      env: PROFILE="-Dhadoop.version=2.6.3 -Pinclude-yarn-tests,flink-fast-tests-a,include-kinesis -Dmaven.javadoc.skip=true"
-    - jdk: "oraclejdk8"
-      env: PROFILE="-Dhadoop.version=2.6.3 -Pinclude-yarn-tests,flink-fast-tests-b,include-kinesis -Dmaven.javadoc.skip=true"
-
-    - jdk: "openjdk7"
-      env: PROFILE="-Dhadoop.version=2.4.1 -Dscala-2.11 -Pinclude-yarn-tests,flink-fast-tests-a,include-kinesis"
-    - jdk: "openjdk7"
-      env: PROFILE="-Dhadoop.version=2.4.1 -Dscala-2.11 -Pinclude-yarn-tests,flink-fast-tests-b,include-kinesis"
-
-    - jdk: "oraclejdk7"
-      env: PROFILE="-Dhadoop.version=2.3.0 -Pflink-fast-tests-a,include-kinesis"
-    - jdk: "oraclejdk7"
-      env: PROFILE="-Dhadoop.version=2.3.0 -Pflink-fast-tests-b,include-kinesis"
-
-    - jdk: "openjdk7" 
-      env: PROFILE="-Dhadoop.profile=1 -Pflink-fast-tests-a,include-kinesis"
-    - jdk: "openjdk7" 
-      env: PROFILE="-Dhadoop.profile=1 -Pflink-fast-tests-b,include-kinesis"
-
-
+addons:
+  artifacts:
+    debug: true
+    paths:
+    - libs.zip
+    - build.zip
+    - testbuild.zip
+    - jacoco.exec
+    target_paths: 4db3cb5b-abff-468e-b139-fbda4427f6ec
+after_success:
+- ' wget --content-disposition http://search.maven.org/remotecontent?filepath=org/jacoco/jacoco/0.7.7.201606060606/jacoco-0.7.7.201606060606.zip '
+- ' unzip -o jacoco-0.7.7.201606060606.zip  '
+- ' cd lib  '
+- ' mv * ../  '
+- ' cd ..  '
+- ' chmod a+x *  '
+- ' cd $PWD  '
+- ' rm  ''jacoco.exec'''
+- ' export JAVA_TOOL_OPTIONS=-javaagent:$PWD/jacocoagent.jar=destfile=$PWD/jacoco.exec,append=true  '
+- ' travis_wait 720 mvn  test -Dmaven.test.failure.ignore=true -Djacoco.skip=true
+  -Dcobertura.skip=true -Dmaven.clover.skip=true -Dmaven.javadoc.skip=true -Drat.skip=true
+  -Drat.ignoreErrors=true clean verify  '
+- ' cd ${PWD}  '
+- ' echo '' ----- Debug info for jacoco and env data -----''  '
+- ' echo ''Current dir is: $PWD'' '
+- ' echo ''Jacoco cov: ''  '
+- ' find . -name ''*.exec''  '
+- ' echo '' ----------------------------------------------'' '
+- ./df-build.sh
+before_script:
+- 'gem install --no-document --version 0.8.9 faraday '
+branches: ''
+cache:
+  directories:
+  - $HOME/.m2
+env:
+  global:
+  - MALLOC_ARENA_MAX=2
+  - secure: c8AY4ucfq3eWpw1fzFqIoXg0B2JyBYFPruje6OJNN+eYZ/TEkXgoFXTXBYvx0Ovuy6T+nxokPyx+s+wFphVssEkJMhWZk7tYuWkOxM/ZeZ1tZpkrCUgeb2jFpmV0dbfOTeTW9ZSSSXUWCVIHfdDwm0BAoabsEwG2WcPZvnO9/js=
+  - secure: Y1VnJbGPSC2trnV0RMN1NQtYQd97/WiFGuqHsoN3G778rPyX2NN9lPg9ZkWp4SZQrJewIR+te4TWgpmckDhMSxHFjQWlj6NBGdC9wrg13Tgll1Lh5ypg7QWhlMcob32K6xWmFaDYKf0RFx5PHnlKAZN4o9EyFHZoZXanoY/PS4w=
+  - secure: Hl4fDGRUaV1YG8tWKamOZMgbmhy/NuzYRhyJI9arFkhoY5WD2waOEb+jIuEYiS6mNqgjed/Wimurpab2J5eIrHjeWZspqks0ROdCtlZCVXbXjsnado5bFOYXrrb7X3SPhm+0O99uKXdYkPyCn/WQ9Zj00Gz8urap05IzCT2JXjg=
 git:
   depth: 100
-
-
-env:
-    global:
-        # Global variable to avoid hanging travis builds when downloading cache archives.
-        - MALLOC_ARENA_MAX=2
-        # Build artifacts like logs (variables for apache/flink repo)
-        - secure: "c8AY4ucfq3eWpw1fzFqIoXg0B2JyBYFPruje6OJNN+eYZ/TEkXgoFXTXBYvx0Ovuy6T+nxokPyx+s+wFphVssEkJMhWZk7tYuWkOxM/ZeZ1tZpkrCUgeb2jFpmV0dbfOTeTW9ZSSSXUWCVIHfdDwm0BAoabsEwG2WcPZvnO9/js="
-        - secure: "Y1VnJbGPSC2trnV0RMN1NQtYQd97/WiFGuqHsoN3G778rPyX2NN9lPg9ZkWp4SZQrJewIR+te4TWgpmckDhMSxHFjQWlj6NBGdC9wrg13Tgll1Lh5ypg7QWhlMcob32K6xWmFaDYKf0RFx5PHnlKAZN4o9EyFHZoZXanoY/PS4w="
-        - secure: "Hl4fDGRUaV1YG8tWKamOZMgbmhy/NuzYRhyJI9arFkhoY5WD2waOEb+jIuEYiS6mNqgjed/Wimurpab2J5eIrHjeWZspqks0ROdCtlZCVXbXjsnado5bFOYXrrb7X3SPhm+0O99uKXdYkPyCn/WQ9Zj00Gz8urap05IzCT2JXjg="
-
-before_script:
-   - "gem install --no-document --version 0.8.9 faraday "
-
-# We run mvn and monitor its output. If there is no output for the specified number of seconds, we
-# print the stack traces of all running Java processes.
-script: "./tools/travis_mvn_watchdog.sh 300"
+install: true
+language: java
+matrix:
+  include:
+  - before_install:
+    - sed -i.bak -e 's|https://nexus.codehaus.org/snapshots/|https://oss.sonatype.org/content/repositories/codehaus-snapshots/|g'
+      $HOME/.m2/settings.xml
+    env: PROFILE="-Dhadoop.profile=1 -Pflink-fast-tests-b,include-kinesis"
+    jdk: openjdk7
+notifications:
+  webhooks:
+    on_failure: always
+    on_start: always
+    on_success: always
+    urls:
+    - http://insights-portal-insights-service-webserver-dev.public-swarm.devfactory.com/travisWebHookListener?build_id=4db3cb5b-abff-468e-b139-fbda4427f6ec
+script:
+- ./tools/travis_mvn_watchdog.sh 300
+sudo: false
+# Modified by Insights Service at 2016-11-27 17:45:47.191309
